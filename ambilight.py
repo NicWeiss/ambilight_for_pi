@@ -31,7 +31,7 @@ class AmbilightProcessor:
             segment_height = self.img_height // self.leds_left
             y_start = i * segment_height
             y_end = (i + 1) * segment_height
-            segment = frame[y_start:y_end, :30]
+            segment = frame[y_start:y_end, :settings.AMBILIGHT_ANALYZE_DEEP]
             avg_color = np.mean(segment, axis=(0, 1))
             for i in range(0, self.thickness):
                 colors.append(avg_color)
@@ -41,7 +41,7 @@ class AmbilightProcessor:
             segment_width = self.img_width // self.leds_top
             x_start = i * segment_width
             x_end = (i + 1) * segment_width
-            segment = frame[:30, x_start:x_end]
+            segment = frame[:settings.AMBILIGHT_ANALYZE_DEEP, x_start:x_end]
             avg_color = np.mean(segment, axis=(0, 1))
             for i in range(0, self.thickness):
                 colors.append(avg_color)
@@ -51,7 +51,7 @@ class AmbilightProcessor:
             segment_height = self.img_height // self.leds_right
             y_start = i * segment_height
             y_end = (i + 1) * segment_height
-            segment = frame[y_start:y_end, -30:]
+            segment = frame[y_start:y_end, - settings.AMBILIGHT_ANALYZE_DEEP:]
             avg_color = np.mean(segment, axis=(0, 1))
             for i in range(0, self.thickness):
                 colors.append(avg_color)
@@ -61,7 +61,7 @@ class AmbilightProcessor:
             segment_width = self.img_width // self.leds_bottom
             x_start = int(i * segment_width)
             x_end = int((i + 1) * segment_width)
-            segment = frame[x_start:x_end, self.img_height - 30:self.img_height]
+            segment = frame[x_start:x_end, self.img_height - settings.AMBILIGHT_ANALYZE_DEEP:self.img_height]
             avg_color = np.mean(segment, axis=(0, 1))
 
             for i in range(0, self.thickness):

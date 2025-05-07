@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     LEDS_THICKNESS: int = 1
 
     AMBILIGHT_SMOOTHING_FACTOR: float = 0.3
+    AMBILIGHT_ANALYZE_DEEP: int = 20
 
     SPI_BUS: int = 1
     SPI_CHANNEL: int = 0
