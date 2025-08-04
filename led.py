@@ -7,6 +7,7 @@ from settings import settings
 
 class WS2812B_Controller:
     def __init__(self, led_count):
+        self.byte_buffer_len  = None
         self.spi = None
         self.led_count = led_count
         self.bit_buffer = np.zeros(led_count * BIT_PER_LED * COLORS_COUNT, dtype=np.uint8)
@@ -34,8 +35,9 @@ class WS2812B_Controller:
         pos = index * 72
         colors = [g, r, b] if COLOR_ORDER == 'GRB' else [r, g, b]
 
-        for i, color in enumerate(colors):
-            self.bit_buffer[pos+i*24:pos+(i+1)*24] = self._encode_byte(color)
+        self.bit_buffer[pos+0*24:pos+(1)*24] = self._encode_byte(colors[0])
+        self.bit_buffer[pos+1*24:pos+(2)*24] = self._encode_byte(colors[1])
+        self.bit_buffer[pos+2*24:pos+(3)*24] = self._encode_byte(colors[2])
 
     def fill(self, r, g, b):
         start = 1 if SKIP_FIRST_LED else 0
@@ -46,10 +48,11 @@ class WS2812B_Controller:
     def show(self):
         """Оптимизированная отправка данных"""
         byte_buffer = np.packbits(self.bit_buffer.reshape(-1, 3))
+        byte_buffer_len = self.byte_buffer_len if self.byte_buffer_len else len(byte_buffer)
 
         # Автоматическая разбивка на пакеты
         chunk_size = 4096
-        for i in range(0, len(byte_buffer), chunk_size):
+        for i in range(0, byte_buffer_len, chunk_size):
             self.spi.xfer2(byte_buffer[i:i+chunk_size].tolist())
 
         # Гарантированный сброс
@@ -59,9 +62,17 @@ class WS2812B_Controller:
         used_color = 0
         for i in range(self.led_count):
             if not (SKIP_FIRST_LED and i == 1):
-                b = colors[used_color]
-                g = colors[used_color+1]
-                r = colors[used_color+2]
+                b = colors[used_color] + settings.COLOR_SHIFT_BLUE
+                g = colors[used_color+1] + settings.COLOR_SHIFT_GREEN
+                r = colors[used_color+2] + settings.COLOR_SHIFT_RED
+
+                b = 255 if b > 255 else b
+                g = 255 if g > 255 else g
+                r = 255 if r > 255 else r
+
+                b = 0 if b < 0 else b
+                g = 0 if g < 0 else g
+                r = 0 if r < 0 else r
 
                 self.set_pixel(i, *[r, g, b])
                 used_color += COLORS_COUNT
