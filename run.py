@@ -2,6 +2,7 @@
 from led import WS2812B_Controller
 from capture import VideoStream
 from ambilight import AmbilightProcessor
+from interface import interface
 import multiprocessing as mp
 
 from constants import COLORS_COUNT
@@ -31,6 +32,8 @@ vs = VideoStream()
 vs.start()
 
 ambilight = AmbilightProcessor()
+
+interface.start(vs)
 
 # Цикл вычисления подсветки
 try:

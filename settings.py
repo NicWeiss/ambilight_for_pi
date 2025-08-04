@@ -10,6 +10,9 @@ class Settings(BaseSettings):
         env_file = ".env"
         case_sensitive = True
 
+    INTERFACE_HOST: str = "0.0.0.0"
+    INTERFACE_PORT: int = 8000
+
     CAPTURE_SOURCE: int = 0
     CAPTURE_SATURATION: int = 100
     CAPTURE_BRIGHTNESS: int = 60

@@ -7,9 +7,9 @@ from settings import settings
 class VideoStream:
     def __init__(self):
         self.cap = cv2.VideoCapture(settings.CAPTURE_SOURCE)
-        self.cap.set(cv2.CAP_PROP_SATURATION, settings.CAPTURE_SATURATION)
-        self.cap.set(cv2.CAP_PROP_BRIGHTNESS, settings.CAPTURE_BRIGHTNESS)
-        self.cap.set(cv2.CAP_PROP_CONTRAST, settings.CAPTURE_CONTRAST)
+        self.set_saturation(settings.CAPTURE_SATURATION)
+        self.set_brightness(settings.CAPTURE_BRIGHTNESS)
+        self.set_contrast(settings.CAPTURE_CONTRAST)
 
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, settings.CAPTURE_FRAME_WIDTH)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, settings.CAPTURE_FRAME_HEIGHT)
@@ -36,3 +36,12 @@ class VideoStream:
 
     def release(self):
         self.cap.release()
+
+    def set_saturation(self, value: int):
+        self.cap.set(cv2.CAP_PROP_SATURATION, value)
+
+    def set_contrast(self, value: int):
+        self.cap.set(cv2.CAP_PROP_CONTRAST, value)
+
+    def set_brightness(self, value: int):
+        self.cap.set(cv2.CAP_PROP_BRIGHTNESS, value)

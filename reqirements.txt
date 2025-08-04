@@ -4,3 +4,6 @@ pydantic-settings==2.9.1
 opencv-python==4.11.0.86
 numpy==1.26.4
 spidev==3.7
+uvicorn==0.17.6
+fastapi==0.115.12
+pydantic==2.11.3
