@@ -27,7 +27,7 @@ class AmbilightProcessor:
         colors = []
 
         # Левые светодиоды (слева направо, сверху вниз)
-        for i in range(0, self.leds_left, self.thickness):
+        for i in range(self.leds_left, 0, (self.thickness * -1)):
             segment_height = self.img_height // self.leds_left
             y_start = i * segment_height
             y_end = (i + 1) * segment_height
