@@ -67,7 +67,7 @@ class AmbilightProcessor:
             for i in range(0, self.thickness):
                 colors.append(avg_color)
 
-        if len(colors) > self.self.total_leds:
+        if len(colors) > self.total_leds:
             colors = colors[:self.total_leds]
 
         colors = np.array(colors, dtype=np.float32)

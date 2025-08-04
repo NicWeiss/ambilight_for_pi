@@ -59,11 +59,11 @@ class WS2812B_Controller:
         used_color = 0
         for i in range(self.led_count):
             if not (SKIP_FIRST_LED and i == 1):
-                r = colors[used_color]
+                b = colors[used_color]
                 g = colors[used_color+1]
-                b = colors[used_color+2]
+                r = colors[used_color+2]
 
-                self.set_pixel(i, *[g, r, b])
+                self.set_pixel(i, *[r, g, b])
                 used_color += COLORS_COUNT
 
         self.show()

@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     SPI_BUS: int = 1
     SPI_CHANNEL: int = 0
     SPI_SPEED: int = 3_200_000
-    SPI_MODE: bytes = 0b00
+    SPI_MODE: int = 0b00
 
     @validator("LED_COUNT", pre=True)
     def assemble_led_count(cls, v: Optional[str], values: Dict[str, Any]) -> Any:
