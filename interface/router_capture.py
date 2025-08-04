@@ -2,6 +2,7 @@ from typing import Any
 
 from fastapi import APIRouter
 from interface import schemas
+from settings import settings
 
 router = APIRouter()
 

@@ -1,12 +1,15 @@
 import spidev
 import numpy as np
+import multiprocessing as mp
 
 from constants import COLORS_COUNT, BIT_PER_LED, COLOR_ORDER, SKIP_FIRST_LED
 from settings import settings
 
 
 class WS2812B_Controller:
-    def __init__(self, led_count):
+    def __init__(self, led_count, buffer):
+        self.buffer = buffer
+        self.led_process = None
         self.byte_buffer_len  = None
         self.spi = None
         self.led_count = led_count
@@ -78,3 +81,38 @@ class WS2812B_Controller:
                 used_color += COLORS_COUNT
 
         self.show()
+
+    @staticmethod
+    def ambilight_cycle(target_arr, service):
+        try:
+            while True:
+                if target_arr:
+                    service.set_cv_array(target_arr)
+        except KeyboardInterrupt:
+            service.stop()
+
+    def stop(self):
+        settings.IS_LED_ENABLED = False
+        if not self.led_process:
+            return
+
+        try:
+            self.led_process.terminate()
+            self.led_process.join()
+            self.led_process.close()
+        except Exception as exc:
+            print(f"Can't stop {exc}")
+
+        self.led_process = None
+        self.fill(0, 0, 0)
+        self.spi.close()
+
+    def start(self):
+        settings.IS_LED_ENABLED = True
+
+        if self.led_process:
+            return
+
+        self.open_spi()
+        self.led_process = mp.Process(target=self.ambilight_cycle, args=(self.buffer, self,))
+        self.led_process.start()

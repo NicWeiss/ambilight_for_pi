@@ -25,8 +25,11 @@ class VideoStream:
 
     def update(self):
         while not self.stopped:
-            self.grabbed, frame = self.cap.read()
-            self.frame = cv2.resize(frame, (settings.TARGET_FRAME_WIDTH, settings.TARGET_FRAME_HEIGHT))
+            try:
+                self.grabbed, frame = self.cap.read()
+                self.frame = cv2.resize(frame, (settings.TARGET_FRAME_WIDTH, settings.TARGET_FRAME_HEIGHT))
+            except Exception as _:
+                pass
 
     def read(self):
         return self.frame

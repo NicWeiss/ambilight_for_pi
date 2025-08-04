@@ -10,30 +10,20 @@ from settings import settings
 
 LED_DATA_BUFFER = mp.Array("i", settings.LED_COUNT * COLORS_COUNT)
 
-
-def start_led_process(target_arr):
-    leds = WS2812B_Controller(settings.LED_COUNT)
-    leds.open_spi()
-    try:
-        while True:
-            if target_arr:
-                leds.set_cv_array(target_arr)
-    except KeyboardInterrupt:
-        leds.fill(0, 0, 0)
-        leds.spi.close()
-
-
 # Поток управления лентой
-led_process = mp.Process(target=start_led_process, args=(LED_DATA_BUFFER,))
-led_process.start()
+led = WS2812B_Controller(settings.LED_COUNT, LED_DATA_BUFFER)
+led.start()
 
 # Поток видеозахвата
 vs = VideoStream()
 vs.start()
 
+# Процессор подсветки
 ambilight = AmbilightProcessor()
 
-interface.start(vs)
+
+# Интерфейс управления
+interface.start(vs, led)
 
 # Цикл вычисления подсветки
 try:

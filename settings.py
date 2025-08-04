@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     LED_COUNT: int = 0
 
     LEDS_THICKNESS: int = 1
+    IS_LED_ENABLED: Optional[bool] = True
 
     AMBILIGHT_SMOOTHING_FACTOR: float = 0.3
     AMBILIGHT_ANALYZE_DEEP: int = 20
@@ -43,7 +44,7 @@ class Settings(BaseSettings):
 
     SPI_BUS: int = 1
     SPI_CHANNEL: int = 0
-    SPI_SPEED: int = 3_400_000
+    SPI_SPEED: int = 3_000_000
     SPI_MODE: int = 0b00
 
     @validator("LED_COUNT", pre=True)
