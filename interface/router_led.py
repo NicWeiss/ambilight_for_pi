@@ -20,3 +20,11 @@ def turn_on() -> Any:
     interface.led.start()
 
     return {"status": "ok"}
+
+
+@router.get("/led/status")
+def status() -> Any:
+    from interface import interface
+    status = interface.led.status()
+
+    return {"status": "ok", "is_enabled": status}

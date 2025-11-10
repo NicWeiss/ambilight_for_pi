@@ -1,6 +1,7 @@
 import spidev
 import numpy as np
 import multiprocessing as mp
+from time import sleep
 
 from constants import COLORS_COUNT, BIT_PER_LED, COLOR_ORDER, SKIP_FIRST_LED
 from settings import settings
@@ -65,9 +66,14 @@ class WS2812B_Controller:
         used_color = 0
         for i in range(self.led_count):
             if not (SKIP_FIRST_LED and i == 1):
-                b = colors[used_color] + settings.COLOR_SHIFT_BLUE
-                g = colors[used_color+1] + settings.COLOR_SHIFT_GREEN
-                r = colors[used_color+2] + settings.COLOR_SHIFT_RED
+
+                b = colors[used_color]
+                g = colors[used_color+1]
+                r = colors[used_color+2]
+
+                b = b + settings.COLOR_SHIFT_BLUE if b > 10 else b
+                g = g + settings.COLOR_SHIFT_GREEN if g > 10 else g
+                r = r + settings.COLOR_SHIFT_RED if r > 10 else r
 
                 b = 255 if b > 255 else b
                 g = 255 if g > 255 else g
@@ -99,6 +105,7 @@ class WS2812B_Controller:
         try:
             self.led_process.terminate()
             self.led_process.join()
+            sleep(1)
             self.led_process.close()
         except Exception as exc:
             print(f"Can't stop {exc}")
@@ -116,3 +123,6 @@ class WS2812B_Controller:
         self.open_spi()
         self.led_process = mp.Process(target=self.ambilight_cycle, args=(self.buffer, self,))
         self.led_process.start()
+
+    def status(self):
+        return settings.IS_LED_ENABLED

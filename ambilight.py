@@ -10,10 +10,17 @@ class AmbilightProcessor:
         self.img_height = settings.TARGET_FRAME_HEIGHT
 
         # Конфигурация светодиодов для вычисления
-        self.leds_left = settings.LEDS_LEFT
-        self.leds_top = settings.LEDS_TOP
-        self.leds_right = settings.LEDS_RIGHT
-        self.leds_bottom = settings.LEDS_BOTTOM
+        self.leds_left = settings.LEDS_LEFT or 1
+        self.leds_top = settings.LEDS_TOP  or 1
+        self.leds_right = settings.LEDS_RIGHT  or 1
+        self.leds_bottom = settings.LEDS_BOTTOM  or 1
+
+        self.segment_width_top = self.img_width // self.leds_top
+        self.segment_width_bottom = self.img_width // self.leds_bottom
+        self.segment_height_left = self.img_height // self.leds_left
+        self.segment_height_right = self.img_height // self.leds_right
+
+        self.top_check = {}
 
         self.thickness = settings.LEDS_THICKNESS
         self.total_leds = settings.LED_COUNT
@@ -24,47 +31,45 @@ class AmbilightProcessor:
 
     def process_frame(self, frame):
         """Обрабатывает кадр и возвращает цвета для светодиодов."""
+        if frame is None or frame.shape[:2] != (self.img_height, self.img_width):
+            pass
+
         colors = []
 
         # Левые светодиоды (слева направо, сверху вниз)
         for i in range(self.leds_left, 0, (self.thickness * -1)):
-            segment_height = self.img_height // self.leds_left
-            y_start = i * segment_height
-            y_end = (i + 1) * segment_height
+            y_start = i * self.segment_height_left
+            y_end = (i + self.thickness) * self.segment_height_left
             segment = frame[y_start:y_end, :settings.AMBILIGHT_ANALYZE_DEEP]
             avg_color = np.mean(segment, axis=(0, 1))
-            for i in range(0, self.thickness):
+            for _ in range(0, self.thickness):
                 colors.append(avg_color)
 
         # Верхние светодиоды (слева направо)
         for i in range(0, self.leds_top, self.thickness):
-            segment_width = self.img_width // self.leds_top
-            x_start = i * segment_width
-            x_end = (i + 1) * segment_width
+            x_start = i * self.segment_width_top
+            x_end = (i + self.thickness) * self.segment_width_top
             segment = frame[:settings.AMBILIGHT_ANALYZE_DEEP, x_start:x_end]
             avg_color = np.mean(segment, axis=(0, 1))
-            for i in range(0, self.thickness):
+            for _ in range(0, self.thickness):
                 colors.append(avg_color)
 
         # Правые светодиоды (сверху вниз)
         for i in range(0, self.leds_right, self.thickness):
-            segment_height = self.img_height // self.leds_right
-            y_start = i * segment_height
-            y_end = (i + 1) * segment_height
+            y_start = i * self.segment_height_right
+            y_end = (i + self.thickness) * self.segment_height_right
             segment = frame[y_start:y_end, - settings.AMBILIGHT_ANALYZE_DEEP:]
             avg_color = np.mean(segment, axis=(0, 1))
-            for i in range(0, self.thickness):
+            for _ in range(0, self.thickness):
                 colors.append(avg_color)
 
         # 4. Нижние светодиоды (слева направо)
         for i in range(0, self.leds_bottom, self.thickness):
-            segment_width = self.img_width // self.leds_bottom
-            x_start = int(i * segment_width)
-            x_end = int((i + 1) * segment_width)
+            x_start = int(i * self.segment_width_bottom)
+            x_end = int((i + self.thickness) * self.segment_width_bottom)
             segment = frame[x_start:x_end, self.img_height - settings.AMBILIGHT_ANALYZE_DEEP:self.img_height]
             avg_color = np.mean(segment, axis=(0, 1))
-
-            for i in range(0, self.thickness):
+            for _ in range(0, self.thickness):
                 colors.append(avg_color)
 
         if len(colors) > self.total_leds:

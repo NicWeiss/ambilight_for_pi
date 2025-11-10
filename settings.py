@@ -44,7 +44,7 @@ class Settings(BaseSettings):
 
     SPI_BUS: int = 1
     SPI_CHANNEL: int = 0
-    SPI_SPEED: int = 3_000_000
+    SPI_SPEED: int = 2_400_000
     SPI_MODE: int = 0b00
 
     @validator("LED_COUNT", pre=True)

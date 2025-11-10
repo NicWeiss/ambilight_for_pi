@@ -1,11 +1,13 @@
 from threading import Thread
 import cv2
+import threading
 
 from settings import settings
 
 
 class VideoStream:
     def __init__(self):
+        self.lock = threading.Lock()
         self.cap = cv2.VideoCapture(settings.CAPTURE_SOURCE)
         self.set_saturation(settings.CAPTURE_SATURATION)
         self.set_brightness(settings.CAPTURE_BRIGHTNESS)
@@ -14,9 +16,9 @@ class VideoStream:
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, settings.CAPTURE_FRAME_WIDTH)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, settings.CAPTURE_FRAME_HEIGHT)
         self.cap.set(cv2.CAP_PROP_FPS, settings.CAPTURE_FPS)
+        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
-        self.grabbed, frame = self.cap.read()
-        self.frame = cv2.resize(frame, (settings.TARGET_FRAME_WIDTH, settings.TARGET_FRAME_HEIGHT))
+        self.frame = None
         self.stopped = False
 
     def start(self):
@@ -25,14 +27,14 @@ class VideoStream:
 
     def update(self):
         while not self.stopped:
-            try:
-                self.grabbed, frame = self.cap.read()
-                self.frame = cv2.resize(frame, (settings.TARGET_FRAME_WIDTH, settings.TARGET_FRAME_HEIGHT))
-            except Exception as _:
-                pass
+            self.grabbed, frame = self.cap.read()
+            self.frame = cv2.resize(frame, (settings.TARGET_FRAME_WIDTH, settings.TARGET_FRAME_HEIGHT))
+            # cv2.imwrite("saved_frame.jpg", self.frame)
 
     def read(self):
-        return self.frame
+        if self.frame is not None:
+            with self.lock:
+                return self.frame.copy()
 
     def stop(self):
         self.stopped = True

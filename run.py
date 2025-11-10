@@ -3,6 +3,7 @@ from led import WS2812B_Controller
 from capture import VideoStream
 from ambilight import AmbilightProcessor
 from interface import interface
+from time import sleep
 import multiprocessing as mp
 
 from constants import COLORS_COUNT
@@ -29,6 +30,10 @@ interface.start(vs, led)
 try:
     while True:
         frame = vs.read()
+        if frame is None:
+            sleep(1)
+            continue
+
         led_colors = ambilight.process_frame(frame)
 
         index = 0
