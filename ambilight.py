@@ -77,7 +77,8 @@ class AmbilightProcessor:
         if len(colors) > self.total_leds:
             colors = colors[:self.total_leds]
 
-        return np.array(colors, dtype=np.float32)
+        # пустой сегмент (выходит за кадр, если число светодиодов делит высоту нацело) даёт NaN: считаем его чёрным
+        return np.nan_to_num(np.array(colors, dtype=np.float32))
 
     def process_frame(self, frame):
         """Обрабатывает кадр и возвращает цвета для светодиодов (сглаживание - коэффициент на кадр)."""
@@ -121,3 +122,29 @@ class AmbilightProcessor:
         alpha = 1.0 - math.exp(-max(dt, 1e-3) / max(tau, 1e-3))
         self.smoothed_colors += alpha * (self._fit(target) - self.smoothed_colors)
         return np.clip(self.smoothed_colors, 0, 255).astype(np.uint8)
+
+    def grade(self, colors):
+        """Цветокоррекция выхода: общая яркость, насыщенность, приглушённый белый (uint8 (N, 3) -> uint8 (N, 3)).
+
+        Оттенок не меняется. Насыщенность s (0..1) умножается на LED_SATURATION; яркость бледных цветов (белого и
+        близких к нему) уменьшается на LED_WHITE_REDUCTION * (1 - s)^LED_WHITE_POWER; затем всё умножается на LED_BRIGHTNESS."""
+        bright = settings.LED_BRIGHTNESS
+        gain = settings.LED_SATURATION
+        reduction = settings.LED_WHITE_REDUCTION
+        if bright == 1.0 and gain == 1.0 and reduction == 0.0:
+            return colors
+
+        c = colors.astype(np.float32)
+        peak = c.max(axis=1, keepdims=True)
+        low = c.min(axis=1, keepdims=True)
+        span = peak - low
+        sat = np.divide(span, peak, out=np.zeros_like(span), where=peak > 0)
+        hue = np.divide(c - low, span, out=np.ones_like(c), where=span > 0)   # оттенок: максимум 1, минимум 0
+
+        sat = np.minimum(1.0, sat * gain)
+        value = peak * (1.0 - reduction * np.power(1.0 - sat, settings.LED_WHITE_POWER)) * bright
+        out = value * ((1.0 - sat) + sat * hue)
+        # при яркости выше 1 самый яркий канал может упереться в 255: подгоняем остальные, чтобы оттенок не уехал
+        top = out.max(axis=1, keepdims=True)
+        out = out * np.minimum(1.0, 255.0 / np.maximum(top, 1e-6))
+        return np.clip(out + 0.5, 0, 255).astype(np.uint8)

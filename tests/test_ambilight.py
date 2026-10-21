@@ -68,3 +68,57 @@ class AmbilightTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class GradeTest(unittest.TestCase):
+    def setUp(self):
+        from ambilight import AmbilightProcessor
+        self.proc = AmbilightProcessor()
+
+    def grade(self, rows, **kw):
+        import numpy as np
+        from settings import settings
+        old = {k: getattr(settings, k) for k in kw}
+        for k, v in kw.items():
+            setattr(settings, k, v)
+        try:
+            return self.proc.grade(np.array(rows, dtype=np.uint8))
+        finally:
+            for k, v in old.items():
+                setattr(settings, k, v)
+
+    def test_neutral_settings_change_nothing(self):
+        rows = [[10, 200, 90], [255, 255, 255], [0, 0, 0]]
+        out = self.grade(rows, LED_BRIGHTNESS=1.0, LED_SATURATION=1.0, LED_WHITE_REDUCTION=0.0)
+        self.assertEqual(out.tolist(), rows)
+
+    def test_brightness_scales_everything(self):
+        out = self.grade([[200, 100, 0]], LED_BRIGHTNESS=0.5, LED_SATURATION=1.0, LED_WHITE_REDUCTION=0.0)
+        self.assertEqual(out[0].tolist(), [100, 50, 0])
+
+    def test_white_is_dimmed_more_than_saturated_color(self):
+        out = self.grade([[255, 255, 255], [0, 0, 255]], LED_BRIGHTNESS=1.0, LED_SATURATION=1.0, LED_WHITE_REDUCTION=0.5)
+        self.assertEqual(out[0].tolist(), [128, 128, 128])     # белый вдвое темнее
+        self.assertEqual(out[1].tolist(), [0, 0, 255])         # чисто красный не тронут (BGR)
+
+    def test_gray_stays_gray(self):
+        out = self.grade([[120, 120, 120]], LED_SATURATION=3.0)
+        self.assertEqual(len(set(out[0].tolist())), 1)
+
+    def test_saturation_increases_and_hue_is_kept(self):
+        base = [[150, 120, 100]]                               # BGR: слегка оранжевый
+        out = self.grade(base, LED_BRIGHTNESS=1.0, LED_SATURATION=2.0, LED_WHITE_REDUCTION=0.0)[0].astype(int)
+        spread_before = max(base[0]) - min(base[0])
+        self.assertGreater(out.max() - out.min(), spread_before)
+        self.assertEqual(out.argmax(), 0)                      # самый яркий канал прежний (синий в BGR)
+        self.assertEqual(out.argmin(), 2)
+
+    def test_values_never_overflow(self):
+        out = self.grade([[255, 0, 0], [255, 255, 0], [255, 250, 255]], LED_BRIGHTNESS=1.0, LED_SATURATION=4.0, LED_WHITE_REDUCTION=0.0)
+        self.assertTrue(((out >= 0) & (out <= 255)).all())
+
+    def test_brightness_above_one_keeps_hue_when_clipping(self):
+        out = self.grade([[200, 100, 0]], LED_BRIGHTNESS=2.0, LED_SATURATION=1.0, LED_WHITE_REDUCTION=0.0)[0]
+        self.assertEqual(out[0], 255)                           # самый яркий канал упёрся в потолок
+        self.assertAlmostEqual(out[1] / out[0], 0.5, delta=0.01)  # пропорции каналов прежние
+        self.assertEqual(out[2], 0)

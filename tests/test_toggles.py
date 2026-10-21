@@ -21,8 +21,9 @@ class SourceTogglesTest(unittest.TestCase):
         settings.TV_ENABLED, settings.TV_MAC, interface.capture = self.saved
 
     def test_sources_are_enabled_by_default(self):
-        self.assertTrue(settings.HDMI_ENABLED)
-        self.assertTrue(settings.TV_ENABLED)
+        defaults = type(settings)(_env_file=None)       # без .env: проверяем значения по умолчанию, а не настройку конкретной платы
+        self.assertTrue(defaults.HDMI_ENABLED)
+        self.assertTrue(defaults.TV_ENABLED)
 
     def test_tv_source_is_not_created_when_disabled(self):
         settings.TV_ENABLED = False

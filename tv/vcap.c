@@ -5,7 +5,8 @@
  * usage: vcap [W H FPS TYPE [L T R EX EY]]      defaults: 160 90 20 1
  *   TYPE 0 = video only, 1 = video + OSD
  * Without L T R EX EY: writes W*H*3 bytes (BGR) per frame.
- * With them: writes (L+T+R)*3 bytes per frame - mean BGR colour of L segments on the left edge
+ * With them: writes 4 + (L+T+R)*3 bytes per frame: a little-endian u32 capture time in milliseconds
+ * (CLOCK_MONOTONIC of the TV, wraps every 49 days) followed by the mean BGR colour of L segments on the left edge
  * (bottom to top), T on the top edge (left to right) and R on the right edge (top to bottom);
  * EX / EY are the side / top strip thickness in pixels. Always delivers the newest frame, exits when the
  * reader goes away.
@@ -57,6 +58,12 @@ static void die(i32 code) {
 }
 static void zero(void *p, int n) { char *c = p; while (n--) *c++ = 0; }
 static void copy(void *d, const void *s, int n) { char *a = d; const char *b = s; while (n--) *a++ = *b++; }
+/* Время в миллисекундах по CLOCK_MONOTONIC (clock_gettime = 263 на ARM EABI) */
+static u32 now_ms(void) {
+    struct { i32 sec, nsec; } t;
+    sc3(263, 1, (i32)&t, 0);
+    return (u32)t.sec * 1000u + (u32)t.nsec / 1000000u;
+}
 static i32 ioctl(i32 fd, u32 req, void *arg) { return sc3(54, fd, (i32)req, (i32)arg); }
 
 struct fmt { u32 type; u32 w, h, pixfmt, field, bpl, sizeimage, cs; char pad[200 - 32]; };
@@ -210,10 +217,15 @@ void main_c(i32 *sp) {
             copy(&b, &n, sizeof b);
         }
         if (seg_mode) {
-            unsigned char seg[MAX_SEG * 3];
-            pack_segments(mem[b.index], bpl, W, H, SL, ST, SR, SEX, SEY, seg);
+            unsigned char seg[4 + MAX_SEG * 3];
+            u32 t = now_ms();
+            seg[0] = (unsigned char)t;
+            seg[1] = (unsigned char)(t >> 8);
+            seg[2] = (unsigned char)(t >> 16);
+            seg[3] = (unsigned char)(t >> 24);
+            pack_segments(mem[b.index], bpl, W, H, SL, ST, SR, SEX, SEY, seg + 4);
             ioctl(fd, VIDIOC_QBUF, &b);
-            if (write_all(seg, (SL + ST + SR) * 3) < 0) die(0);
+            if (write_all(seg, 4 + (SL + ST + SR) * 3) < 0) die(0);
         } else {
             i32 size = b.bytesused ? (i32)b.bytesused : frame_bytes;
             if (size > frame_bytes) size = frame_bytes;

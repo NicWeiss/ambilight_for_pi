@@ -76,7 +76,7 @@ def main():
 
     selector = Selector(settings.HDMI_PICTURE_THRESHOLD, settings.HDMI_HOLD_SECONDS)
     state = {"source": None, "hdmi_enabled": vs is not None, "tv_enabled": tv is not None,
-             "hdmi_peak": 0, "tv_mode": None, "tv_age": None, "tv_address": None}
+             "hdmi_peak": 0, "tv_mode": None, "tv_age": None, "tv_address": None, "tv_blank": None, "tv_starved": None, "tv_transport": None, "led_hz": None}
 
     # Интерфейс управления
     interface.start(vs, led, lambda: dict(state))
@@ -111,6 +111,7 @@ def main():
     source = None
     last_t = time()
     last_status = 0.0
+    led_stat = (time(), 0)
 
     # Цикл вычисления подсветки
     try:
@@ -134,15 +135,19 @@ def main():
                     seen_hdmi_time = frame_time
                     target = ambilight.segment_colors(frame)
             else:
-                tv_data = tv.latest(tv.max_age()) if tv else None
+                if tv and tv.mode == "vcap":
+                    tv_data = tv.sample(now)        # цвета на момент now - задержка, интерполяция между кадрами
+                else:
+                    tv_data = tv.latest(tv.max_age()) if tv else None
                 if tv_data is not None:
                     active = Selector.TV
                     tau = settings.SMOOTHING_TAU_TV_SLOW if tv.mode == "legacy" else settings.SMOOTHING_TAU_TV
-                    if tv.seq != seen_tv_seq:
+                    if tv_data.ndim == 2:
+                        # vcap отдаёт готовые цвета сегментов, значение меняется плавно с каждым циклом
+                        target = ambilight.from_segments(tv_data)
+                    elif tv.seq != seen_tv_seq:
                         seen_tv_seq = tv.seq
-                        # vcap отдаёт готовые цвета сегментов (2D), запасной режим - целый кадр (3D)
-                        target = (ambilight.from_segments(tv_data) if tv_data.ndim == 2
-                                  else ambilight.segment_colors(tv_data))
+                        target = ambilight.segment_colors(tv_data)   # запасной режим: целый кадр
                 else:
                     active = NONE
                     tau = settings.SMOOTHING_TAU_IDLE
@@ -152,19 +157,27 @@ def main():
                 print("[main] source: %s -> %s" % (source, active), flush=True)
                 source = active
 
-            led_colors = ambilight.smooth(target, now - last_t, tau)
+            led_colors = ambilight.grade(ambilight.smooth(target, now - last_t, tau))
             last_t = now
 
             # Порядок байт в буфере - BGR, как его читает led.set_cv_array
             with LED_DATA_BUFFER.get_lock():
                 LED_DATA_BUFFER[:] = led_colors.reshape(-1).tolist()
+            led.notify()
 
             state.update(
                 source=source, hdmi_peak=peak,
                 tv_mode=tv.mode if tv else None,
                 tv_age=None if not tv or tv.age() is None else round(tv.age(), 2),
                 tv_address=tv.address if tv else None,
+                tv_blank=tv.blank if tv else None,
+                tv_starved=None if not tv else round(tv.starvation, 3),
+                tv_transport=tv.transport if tv else None,
             )
+            if now - led_stat[0] >= 5.0:
+                sent = led.sent.value
+                state["led_hz"] = round((sent - led_stat[1]) / (now - led_stat[0]), 1)
+                led_stat = (now, sent)
             if now - last_status > 60:
                 last_status = now
                 print("[main] status: %s" % state, flush=True)
