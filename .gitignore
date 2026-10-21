@@ -1,2 +1,6 @@
 .env
 __pycache__
+.tv_last_ip
+tv/inputbridge/build/
+tv/inputbridge/debug.keystore
+*.idsig

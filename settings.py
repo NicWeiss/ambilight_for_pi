@@ -15,8 +15,8 @@ class Settings(BaseSettings):
 
     CAPTURE_SOURCE: int = 0
     CAPTURE_SATURATION: int = 100
-    CAPTURE_BRIGHTNESS: int = 60
-    CAPTURE_CONTRAST: float = 1
+    CAPTURE_BRIGHTNESS: int = 40
+    CAPTURE_CONTRAST: float = 40
 
     CAPTURE_FRAME_WIDTH: int = 640
     CAPTURE_FRAME_HEIGHT: int = 480
@@ -44,8 +44,40 @@ class Settings(BaseSettings):
 
     SPI_BUS: int = 1
     SPI_CHANNEL: int = 0
-    SPI_SPEED: int = 2_400_000
+    SPI_SPEED: int = 3_200_000
     SPI_MODE: int = 0b00
+
+    # Включение источников. Выключенный источник не открывается и не опрашивается.
+    # HDMI - карта захвата, ТВ - картинка с самого телевизора (для неё ещё нужен TV_MAC).
+    HDMI_ENABLED: bool = True
+    TV_ENABLED: bool = True
+
+    # Выбор источника: HDMI (карта захвата) всегда в приоритете, пока на нём есть картинка.
+    # Если HDMI чёрный дольше HDMI_HOLD_SECONDS - считаем, что сигнала нет, и берём картинку с ТВ.
+    # Сигналы никогда не смешиваются.
+    HDMI_PICTURE_THRESHOLD: int = 25    # максимум по каналам (0..255), выше которого кадр - "есть картинка"; должен быть заметно выше пика пустого кадра (зависит от CAPTURE_BRIGHTNESS)
+    HDMI_HOLD_SECONDS: float = 8.0
+    HDMI_STALE_SECONDS: float = 2.0     # если карта захвата не присылает кадры - HDMI считается отсутствующим
+
+    # Картинка с телевизора по ADB (см. tv/README.md). ТВ ищется в сети по MAC, а не по IP.
+    TV_MAC: str = ""                    # MAC Wi-Fi телевизора; пусто - источник ТВ выключен
+    TV_ADB_PORT: int = 5555
+    TV_CAPTURE_WIDTH: int = 320         # меньше 320x180 драйвер отдаёт кадр с чёрными полями
+    TV_CAPTURE_HEIGHT: int = 180
+    TV_CAPTURE_FPS: int = 30
+    TV_CAPTURE_OSD: bool = True         # True - видео + интерфейс ТВ, False - только видео
+    TV_STATE_FILE: str = ".tv_last_ip"  # последний найденный адрес ТВ (подсказка для быстрого поиска)
+
+    # Сглаживание: постоянная времени экспоненты, секунды (чем больше, тем плавнее).
+    # 0 для HDMI - вычислить из AMBILIGHT_SMOOTHING_FACTOR (как коэффициент на кадр при 30 кадр/с).
+    SMOOTHING_TAU_HDMI: float = 0.0
+    SMOOTHING_TAU_TV: float = 0.08
+    SMOOTHING_TAU_TV_SLOW: float = 0.6  # запасной режим ТВ, ~1 кадр/с
+    SMOOTHING_TAU_IDLE: float = 0.8     # когда источников нет - плавно гасим ленту
+
+    MAIN_LOOP_HZ: int = 40
+    LED_REFRESH_HZ: int = 50
+    WATCHDOG_SECONDS: float = 30.0      # если главный цикл завис - процесс завершается и перезапускается systemd
 
     @validator("LED_COUNT", pre=True)
     def assemble_led_count(cls, v: Optional[str], values: Dict[str, Any]) -> Any:

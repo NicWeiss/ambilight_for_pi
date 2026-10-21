@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="key_service_description">Открывает меню источников ТВ по кнопке INPUT в любом лаунчере. Других данных не читает.</string>
+</resources>

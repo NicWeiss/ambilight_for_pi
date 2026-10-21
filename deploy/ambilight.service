@@ -1,0 +1,16 @@
+[Unit]
+Description=Ambilight
+After=network.target
+
+[Service]
+# Папка с кодом и .env
+WorkingDirectory=/root/scripts/ambilight
+ExecStart=/usr/bin/python3 run.py
+# Доступа к плате может не быть, поэтому перезапуск при любом завершении (в том числе по watchdog)
+Restart=always
+RestartSec=3
+KillMode=control-group
+TimeoutStopSec=15
+
+[Install]
+WantedBy=multi-user.target

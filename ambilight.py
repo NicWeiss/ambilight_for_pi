@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 
 from constants import COLORS_COUNT
@@ -29,8 +31,8 @@ class AmbilightProcessor:
         self.smoothing_factor = settings.AMBILIGHT_SMOOTHING_FACTOR  # Чем меньше, тем плавнее
         self.smoothed_colors = np.zeros((self.total_leds, COLORS_COUNT), dtype=np.float32)
 
-    def process_frame(self, frame):
-        """Обрабатывает кадр и возвращает цвета для светодиодов."""
+    def segment_colors(self, frame):
+        """Средние цвета сегментов кадра (BGR, без сглаживания): по одному цвету на светодиод."""
         if frame is None or frame.shape[:2] != (self.img_height, self.img_width):
             pass
 
@@ -75,7 +77,11 @@ class AmbilightProcessor:
         if len(colors) > self.total_leds:
             colors = colors[:self.total_leds]
 
-        colors = np.array(colors, dtype=np.float32)
+        return np.array(colors, dtype=np.float32)
+
+    def process_frame(self, frame):
+        """Обрабатывает кадр и возвращает цвета для светодиодов (сглаживание - коэффициент на кадр)."""
+        colors = self.segment_colors(frame)
 
         # Применяем сглаживание (экспоненциальное)
         self.smoothed_colors = (
@@ -84,3 +90,34 @@ class AmbilightProcessor:
         )
 
         return self.smoothed_colors.astype(np.uint8)
+
+    def segment_counts(self):
+        """Сколько сегментов у каждой стороны: слева (снизу вверх), сверху, справа (сверху вниз)."""
+        return (
+            len(range(self.leds_left, 0, -self.thickness)),
+            len(range(0, self.leds_top, self.thickness)),
+            len(range(0, self.leds_right, self.thickness)),
+        )
+
+    def from_segments(self, segments):
+        """Готовые цвета сегментов (слева, сверху, справа), посчитанные на стороне ТВ, ->
+        цвета светодиодов в том же порядке и количестве, что и у segment_colors()."""
+        left, top, right = self.segment_counts()
+        parts = [segments[:left], segments[left:left + top], segments[left + top:left + top + right]]
+        colors = np.concatenate([np.repeat(p, self.thickness, axis=0) for p in parts]).astype(np.float32)
+        return self._fit(colors)
+
+    def _fit(self, colors):
+        """Обрезает или дополняет чёрным до числа светодиодов."""
+        if len(colors) > self.total_leds:
+            return colors[:self.total_leds]
+        if len(colors) < self.total_leds:
+            pad = np.zeros((self.total_leds - len(colors), COLORS_COUNT), np.float32)
+            return np.concatenate([colors, pad])
+        return colors
+
+    def smooth(self, target, dt, tau):
+        """Сглаживание по времени: постоянная tau не зависит от частоты кадров источника."""
+        alpha = 1.0 - math.exp(-max(dt, 1e-3) / max(tau, 1e-3))
+        self.smoothed_colors += alpha * (self._fit(target) - self.smoothed_colors)
+        return np.clip(self.smoothed_colors, 0, 255).astype(np.uint8)

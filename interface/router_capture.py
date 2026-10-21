@@ -1,18 +1,24 @@
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from interface import schemas
 from settings import settings
 
 router = APIRouter()
 
 
+def capture():
+    from interface import interface
+    if interface.capture is None:
+        raise HTTPException(status_code=409, detail="HDMI source is disabled (HDMI_ENABLED=false)")
+    return interface.capture
+
+
 @router.post("/capture/set/saturation")
 def set_saturation(
     params_in: schemas.SetScheme
 ) -> Any:
-    from interface import interface
-    interface.capture.set_saturation(params_in.value)
+    capture().set_saturation(params_in.value)
 
     return {"status": "ok"}
 
@@ -20,8 +26,7 @@ def set_saturation(
 def set_contrast(
     params_in: schemas.SetScheme
 ) -> Any:
-    from interface import interface
-    interface.capture.set_contrast(params_in.value)
+    capture().set_contrast(params_in.value)
 
     return {"status": "ok"}
 
@@ -30,7 +35,6 @@ def set_contrast(
 def set_brightness(
     params_in: schemas.SetScheme
 ) -> Any:
-    from interface import interface
-    interface.capture.set_brightness(params_in.value)
+    capture().set_brightness(params_in.value)
 
     return {"status": "ok"}

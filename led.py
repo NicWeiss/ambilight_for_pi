@@ -1,3 +1,5 @@
+import os
+import signal
 import spidev
 import numpy as np
 import multiprocessing as mp
@@ -90,10 +92,19 @@ class WS2812B_Controller:
 
     @staticmethod
     def ambilight_cycle(target_arr, service):
+        def blank(*_):
+            # при остановке сервиса гасим ленту, а не оставляем последние цвета
+            service.fill(0, 0, 0)
+            service.spi.close()
+            os._exit(0)
+
+        signal.signal(signal.SIGTERM, blank)
+        delay = 1.0 / max(settings.LED_REFRESH_HZ, 1)
         try:
             while True:
                 if target_arr:
                     service.set_cv_array(target_arr)
+                sleep(delay)
         except KeyboardInterrupt:
             service.stop()
 
