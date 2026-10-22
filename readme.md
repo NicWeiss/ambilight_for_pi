@@ -78,6 +78,22 @@ systemctl enable --now ambilight
 journalctl -u ambilight -f       # лог: смена источника, состояние ТВ-источника
 ```
 
+## Питание платы от USB ТВ и выключение ТВ
+
+Если плата (и, например, колонка) питается от USB-порта ТВ и этот же порт соединён с ТВ по данным, ТВ считает подключённого USB-хоста
+активным (источник пробуждения ядра `gadget-connect`), не уходит в глубокий сон и не снимает питание с порта: при выключении с пульта гаснет только экран.
+Чтобы выключение ТВ снова обесточивало плату, плата отключает данные этого USB-подключения (питание остаётся). Подсветка по Wi-Fi/ADB не страдает, но `adb` по USB
+перестаёт быть доступен.
+
+```bash
+cp deploy/99-tv-usb-nodata.rules /etc/udev/rules.d/
+cp deploy/tv-usb-nodata.service /etc/systemd/system/
+udevadm control --reload && systemctl daemon-reload && systemctl enable --now tv-usb-nodata
+```
+
+Правило подходит к устройству `18d1` с названием `am30am` (так ТВ виден на USB); для другого ТВ поправьте `idVendor`/`product` в обоих файлах (`lsusb`, `/sys/bus/usb/devices/*/product`).
+Отменить: `systemctl disable --now tv-usb-nodata && rm /etc/udev/rules.d/99-tv-usb-nodata.rules`.
+
 ## HTTP-интерфейс
 
 Порт `INTERFACE_PORT` (по умолчанию 8000).

@@ -1,0 +1,10 @@
+[Unit]
+Description=Disable USB data link to the TV (power only) so the TV can really sleep
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c "for d in /sys/bus/usb/devices/*; do [ \"$(cat $d/idVendor 2>/dev/null)\" = 18d1 ] && echo 0 > $d/authorized; done; true"
+
+[Install]
+WantedBy=multi-user.target
